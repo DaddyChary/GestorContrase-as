@@ -52,7 +52,7 @@ public class PasswordAdapter extends RecyclerView.Adapter<PasswordAdapter.Passwo
         // Configurar botón de editar
         holder.editButton.setOnClickListener(v -> {
             Intent intent = new Intent(context, AddEditPasswordActivity.class);
-            intent.putExtra("documentId", password.getDocumentId());
+            intent.putExtra("documentId", password.getId());
             context.startActivity(intent);
         });
 

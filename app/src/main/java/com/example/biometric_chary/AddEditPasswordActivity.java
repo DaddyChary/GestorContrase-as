@@ -1,15 +1,20 @@
 package com.example.biometric_chary;
 
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.google.android.material.button.MaterialButton;
 
 import models.Password;  // Asegúrate de importar correctamente la clase Password
@@ -40,11 +45,46 @@ public class AddEditPasswordActivity extends AppCompatActivity {
         // Inicializar FirebaseAuth
         mAuth = FirebaseAuth.getInstance();
 
+        // Obtener el documentId del intent
+        String documentId = getIntent().getStringExtra("documentId");
+
+        // Si hay un documentId, cargar los datos para edición
+        if (documentId != null && !documentId.isEmpty()) {
+            loadPasswordData(documentId);
+        }
+
         // Configurar el botón de guardar
         savePasswordButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 savePassword();  // Llamar al método para guardar la contraseña
+            }
+        });
+    }
+
+    private void loadPasswordData(String documentId) {
+        // Consultar el documento en Firebase Realtime Database
+        databaseReference.child(documentId).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    // Mapear los datos del snapshot al objeto Password
+                    Password password = snapshot.getValue(Password.class);
+                    if (password != null) {
+                        // Llenar los EditTexts con los datos del documento
+                        siteNameEditText.setText(password.getSiteName());
+                        usernameEditText.setText(password.getUsername());
+                        passwordEditText.setText(password.getPassword());
+                        notesEditText.setText(password.getNotes());
+                    }
+                } else {
+                    Toast.makeText(AddEditPasswordActivity.this, "Documento no encontrado", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(AddEditPasswordActivity.this, "Error al cargar los datos", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -71,25 +111,31 @@ public class AddEditPasswordActivity extends AppCompatActivity {
             return;
         }
 
-        // Generar un ID único para el documento
-        String documentId = databaseReference.push().getKey(); // Genera un ID único automáticamente
+        // Verificar si hay un documentId pasado para editar
+        String documentId = getIntent().getStringExtra("documentId");
+        Log.d("AddEditPasswordActivity", "documentId: " + documentId);
 
-        // Crear el objeto Password con los datos proporcionados, incluyendo el documentId generado y el userId
-        Password newPassword = new Password(siteName, username, password, notes, userId, documentId);
+        if (documentId == null || documentId.isEmpty()) {
+            // Si no hay un documentId, crear uno nuevo
+            documentId = databaseReference.push().getKey(); // Genera un ID único automáticamente
+        }
 
-        // Guardar el objeto Password en Firebase Realtime Database
-        // Después de guardar la contraseña
-        databaseReference.child(documentId).setValue(newPassword)
+        // Crear el objeto Password con los datos proporcionados
+        Password passwordObject = new Password(siteName, username, password, notes, userId, documentId);
+
+        // Guardar o actualizar el objeto Password en Firebase Realtime Database
+        databaseReference.child(documentId).setValue(passwordObject)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
-                        // Mensaje de éxito
-                        Toast.makeText(AddEditPasswordActivity.this, "Contraseña guardada correctamente", Toast.LENGTH_SHORT).show();
-                        finish();  // Regresar a la actividad principal
+                        if (getIntent().hasExtra("documentId")) {
+                            Toast.makeText(AddEditPasswordActivity.this, "Contraseña actualizada correctamente", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(AddEditPasswordActivity.this, "Contraseña guardada correctamente", Toast.LENGTH_SHORT).show();
+                        }
+                        finish(); // Regresar a la actividad principal
                     } else {
-                        // Mensaje de error
-                        Toast.makeText(AddEditPasswordActivity.this, "Error al guardar la contraseña", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(AddEditPasswordActivity.this, "Error al guardar los datos", Toast.LENGTH_SHORT).show();
                     }
                 });
     }
-
 }
