@@ -17,8 +17,8 @@ public class Password {
         this.siteName = siteName;
         this.username = username;
         this.password = password;
-        this.id = id;
         this.notes = notes;
+        this.id = id;
         this.documentId = documentId;  // Establecer el documentId
     }
 

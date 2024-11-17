@@ -98,11 +98,12 @@ public class MainActivity extends AppCompatActivity {
                     // Comprobar si el correo del usuario coincide con el correo del usuario logueado
                     if (currentUserId != null && currentUserId.equals(userId)) {
                         // Obtener los campos de la contraseña
-                        String documentId = passwordSnapshot.child("documentId").getValue(String.class);
                         String siteName = passwordSnapshot.child("siteName").getValue(String.class);
                         String username = passwordSnapshot.child("username").getValue(String.class);
                         String password = passwordSnapshot.child("password").getValue(String.class);
                         String notes = passwordSnapshot.child("notes").getValue(String.class);
+                        String documentId = passwordSnapshot.child("documentId").getValue(String.class);
+
 
                         // Validar que siteName no esté vacío o sea nulo
                         if (siteName != null && !siteName.trim().isEmpty()) {
