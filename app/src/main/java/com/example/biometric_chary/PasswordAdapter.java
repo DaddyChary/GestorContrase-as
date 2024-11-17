@@ -2,7 +2,6 @@ package com.example.biometric_chary;
 
 import android.content.Context;
 import android.content.Intent;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,7 +24,7 @@ public class PasswordAdapter extends RecyclerView.Adapter<PasswordAdapter.Passwo
     private List<Password> passwordList;
     private Context context;
 
-    public PasswordAdapter(List<Password> passwordList) {
+    public PasswordAdapter(List<Password> passwordList, Context context) {
         this.passwordList = passwordList;
         this.context = context;
     }
@@ -44,7 +43,10 @@ public class PasswordAdapter extends RecyclerView.Adapter<PasswordAdapter.Passwo
         // Asignar datos a las vistas
         holder.siteNameTextView.setText(password.getSiteName());
         holder.usernameTextView.setText(password.getUsername());
-        holder.passwordTextView.setText(password.getPassword());
+
+        // Mostrar la contraseña como ***
+        holder.passwordTextView.setText("*************");  // Mostrar como asteriscos
+
         holder.notesTextView.setText(password.getNotes());
 
         // Configurar botón de editar
@@ -80,20 +82,17 @@ public class PasswordAdapter extends RecyclerView.Adapter<PasswordAdapter.Passwo
                         passwordList.remove(position);
                         notifyItemRemoved(position);
                         Toast.makeText(context, "Contraseña eliminada", Toast.LENGTH_SHORT).show();
-                        Log.d("PasswordAdapter", "Documento eliminado: " + documentId);
                     })
                     .addOnFailureListener(e -> {
-                        Log.w("PasswordAdapter", "Error al eliminar documento", e);
                         Toast.makeText(context, "Error al eliminar la contraseña", Toast.LENGTH_SHORT).show();
                     });
         } else {
-            Log.e("PasswordAdapter", "El documentId es nulo o vacío");
+            Toast.makeText(context, "Error: documentId nulo o vacío", Toast.LENGTH_SHORT).show();
         }
     }
 
     @Override
     public int getItemCount() {
-        // Verificar que la lista no esté vacía antes de devolver el tamaño
         return passwordList != null ? passwordList.size() : 0;
     }
 

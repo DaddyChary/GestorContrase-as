@@ -45,7 +45,8 @@ public class MainActivity extends AppCompatActivity {
         // Configurar RecyclerView
         passwordRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         passwordList = new ArrayList<>();
-        passwordAdapter = new PasswordAdapter(passwordList); // Asegúrate de que esta instancia sea global o al menos de acceso dentro de este método
+        // Asegúrate de pasar tanto la lista de contraseñas como el contexto
+        passwordAdapter = new PasswordAdapter(passwordList, MainActivity.this);
         passwordRecyclerView.setAdapter(passwordAdapter);
 
         // Inicializar Firebase
@@ -120,7 +121,7 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(MainActivity.this, "No tienes contraseñas guardadas.", Toast.LENGTH_SHORT).show();
                 } else {
                     // Configurar el adaptador para mostrar las contraseñas en el RecyclerView
-                    passwordAdapter = new PasswordAdapter(passwordList); // Asegúrate de usar el mismo adaptador
+                    passwordAdapter = new PasswordAdapter(passwordList, MainActivity.this);  // Asegúrate de usar el mismo adaptador
                     passwordRecyclerView.setAdapter(passwordAdapter);
                 }
 
