@@ -13,7 +13,6 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.firestore.FirebaseFirestore;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -26,6 +25,7 @@ public class PasswordAdapter extends RecyclerView.Adapter<PasswordAdapter.Passwo
 
     private final List<Password> passwordList;
     private final Context context;
+    private static final String AES_KEY = "1234567890123456"; // Debes usar una clave segura de 32 bytes
 
     public PasswordAdapter(List<Password> passwordList, Context context) {
         this.passwordList = passwordList;
@@ -49,6 +49,26 @@ public class PasswordAdapter extends RecyclerView.Adapter<PasswordAdapter.Passwo
         holder.passwordTextView.setText("*************"); // Mostrar contraseña como asteriscos
         holder.notesTextView.setText(password.getNotes());
 
+        // Configurar botón "Ver"
+        holder.viewButton.setOnClickListener(v -> {
+            try {
+                // Desencriptar la contraseña al presionar el botón
+                String decryptedPassword = AESHelper.decrypt(password.getPassword(), AES_KEY);
+                holder.passwordTextView.setText(decryptedPassword); // Muestra la contraseña desencriptada
+            } catch (Exception e) {
+                Log.e("PasswordAdapter", "Error al desencriptar la contraseña", e);
+                Toast.makeText(context, "Error al desencriptar la contraseña", Toast.LENGTH_SHORT).show();
+            }
+
+            holder.viewButton.setEnabled(false); // Deshabilitar el botón temporalmente
+
+            // Restaurar los asteriscos después de 3 segundos
+            holder.passwordTextView.postDelayed(() -> {
+                holder.passwordTextView.setText("*************");
+                holder.viewButton.setEnabled(true); // Habilitar el botón de nuevo
+            }, 3000); // 3 segundos para ver la contraseña
+        });
+
         // Configurar botón de editar
         holder.editButton.setOnClickListener(v -> {
             Intent intent = new Intent(context, AddEditPasswordActivity.class);
@@ -59,6 +79,7 @@ public class PasswordAdapter extends RecyclerView.Adapter<PasswordAdapter.Passwo
         // Configurar botón de eliminar
         holder.deleteButton.setOnClickListener(v -> showDeleteConfirmationDialog(password, position));
     }
+
 
     private void showDeleteConfirmationDialog(Password password, int position) {
         new MaterialAlertDialogBuilder(context)
@@ -77,7 +98,7 @@ public class PasswordAdapter extends RecyclerView.Adapter<PasswordAdapter.Passwo
             Log.d("PasswordAdapter", "Intentando eliminar nodo con documentId: " + documentId);
 
             DatabaseReference realtimeDb = FirebaseDatabase.getInstance()
-                    .getReference("Passwords")
+                    .getReference("Passwords") // Acceder a la referencia de los Passwords
                     .child(documentId);
 
             realtimeDb.removeValue()
@@ -96,8 +117,6 @@ public class PasswordAdapter extends RecyclerView.Adapter<PasswordAdapter.Passwo
         }
     }
 
-
-
     @Override
     public int getItemCount() {
         return passwordList != null ? passwordList.size() : 0;
@@ -105,7 +124,7 @@ public class PasswordAdapter extends RecyclerView.Adapter<PasswordAdapter.Passwo
 
     public static class PasswordViewHolder extends RecyclerView.ViewHolder {
         TextView siteNameTextView, usernameTextView, passwordTextView, notesTextView;
-        MaterialButton editButton, deleteButton;
+        MaterialButton editButton, deleteButton, viewButton;
 
         public PasswordViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -115,6 +134,7 @@ public class PasswordAdapter extends RecyclerView.Adapter<PasswordAdapter.Passwo
             notesTextView = itemView.findViewById(R.id.notes_text_view);
             editButton = itemView.findViewById(R.id.edit_button);
             deleteButton = itemView.findViewById(R.id.delete_button);
+            viewButton = itemView.findViewById(R.id.ver_button);
         }
     }
 }

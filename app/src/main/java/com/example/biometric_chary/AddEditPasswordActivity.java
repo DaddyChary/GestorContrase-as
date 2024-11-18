@@ -1,6 +1,7 @@
 package com.example.biometric_chary;
 
 import android.os.Bundle;
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
@@ -17,15 +18,23 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.android.material.button.MaterialButton;
 
-import models.Password;  // Asegúrate de importar correctamente la clase Password
+import java.security.Key;
+
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
+
+import models.Password;
 
 public class AddEditPasswordActivity extends AppCompatActivity {
 
+    private static final String AES_ALGORITHM = "AES";
+    private static final String ENCRYPTION_KEY = "1234567890123456"; // Cambia esta clave por una más segura
+
     private EditText siteNameEditText, usernameEditText, passwordEditText, notesEditText;
     private MaterialButton savePasswordButton;
-    private DatabaseReference databaseReference;  // Referencia a la base de datos
+    private DatabaseReference databaseReference;
 
-    private FirebaseAuth mAuth;  // Para obtener el correo del usuario autenticado
+    private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,42 +48,36 @@ public class AddEditPasswordActivity extends AppCompatActivity {
         notesEditText = findViewById(R.id.notes_input);
         savePasswordButton = findViewById(R.id.save_password_button);
 
-        // Inicializar la referencia a la base de datos de Firebase Realtime Database
+        // Inicializar Firebase
         databaseReference = FirebaseDatabase.getInstance().getReference("Passwords");
-
-        // Inicializar FirebaseAuth
         mAuth = FirebaseAuth.getInstance();
 
-        // Obtener el documentId del intent
         String documentId = getIntent().getStringExtra("documentId");
 
-        // Si hay un documentId, cargar los datos para edición
         if (documentId != null && !documentId.isEmpty()) {
             loadPasswordData(documentId);
         }
 
-        // Configurar el botón de guardar
-        savePasswordButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                savePassword();  // Llamar al método para guardar la contraseña
-            }
-        });
+        savePasswordButton.setOnClickListener(v -> savePassword());
     }
 
     private void loadPasswordData(String documentId) {
-        // Consultar el documento en Firebase Realtime Database
         databaseReference.child(documentId).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 if (snapshot.exists()) {
-                    // Mapear los datos del snapshot al objeto Password
                     Password password = snapshot.getValue(Password.class);
                     if (password != null) {
-                        // Llenar los EditTexts con los datos del documento
                         siteNameEditText.setText(password.getSiteName());
                         usernameEditText.setText(password.getUsername());
-                        passwordEditText.setText(password.getPassword());
+                        try {
+                            // Desencriptar la contraseña antes de mostrarla
+                            String decryptedPassword = decrypt(password.getPassword());
+                            passwordEditText.setText(decryptedPassword);
+                        } catch (Exception e) {
+                            Toast.makeText(AddEditPasswordActivity.this, "Error al desencriptar contraseña", Toast.LENGTH_SHORT).show();
+                            Log.e("DecryptionError", e.getMessage());
+                        }
                         notesEditText.setText(password.getNotes());
                     }
                 } else {
@@ -90,52 +93,62 @@ public class AddEditPasswordActivity extends AppCompatActivity {
     }
 
     private void savePassword() {
-        // Obtener los datos ingresados en los EditTexts
         String siteName = siteNameEditText.getText().toString().trim();
         String username = usernameEditText.getText().toString().trim();
         String password = passwordEditText.getText().toString().trim();
         String notes = notesEditText.getText().toString().trim();
 
-        // Validación de los campos obligatorios
         if (siteName.isEmpty() || username.isEmpty() || password.isEmpty()) {
-            Toast.makeText(AddEditPasswordActivity.this, "Por favor, completa todos los campos obligatorios", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Por favor, completa todos los campos obligatorios", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Obtener el UID del usuario autenticado
         String userId = mAuth.getCurrentUser() != null ? mAuth.getCurrentUser().getUid() : "";
 
-        // Validar si el usuario está autenticado
         if (userId.isEmpty()) {
-            Toast.makeText(AddEditPasswordActivity.this, "Usuario no autenticado", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Usuario no autenticado", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Verificar si hay un documentId pasado para editar
         String documentId = getIntent().getStringExtra("documentId");
-        Log.d("AddEditPasswordActivity", "documentId: " + documentId);
-
         if (documentId == null || documentId.isEmpty()) {
-            // Si no hay un documentId, crear uno nuevo
-            documentId = databaseReference.push().getKey(); // Genera un ID único automáticamente
+            documentId = databaseReference.push().getKey();
         }
 
-        // Crear el objeto Password con los datos proporcionados
-        Password passwordObject = new Password(siteName, username, password, notes, userId, documentId);
+        try {
+            // Encriptar la contraseña antes de guardar
+            String encryptedPassword = encrypt(password);
+            Password passwordObject = new Password(siteName, username, encryptedPassword, notes, userId, documentId);
 
-        // Guardar o actualizar el objeto Password en Firebase Realtime Database
-        databaseReference.child(documentId).setValue(passwordObject)
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        if (getIntent().hasExtra("documentId")) {
-                            Toast.makeText(AddEditPasswordActivity.this, "Contraseña actualizada correctamente", Toast.LENGTH_SHORT).show();
+            databaseReference.child(documentId).setValue(passwordObject)
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            Toast.makeText(this, "Contraseña guardada correctamente", Toast.LENGTH_SHORT).show();
+                            finish();
                         } else {
-                            Toast.makeText(AddEditPasswordActivity.this, "Contraseña guardada correctamente", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, "Error al guardar los datos", Toast.LENGTH_SHORT).show();
                         }
-                        finish(); // Regresar a la actividad principal
-                    } else {
-                        Toast.makeText(AddEditPasswordActivity.this, "Error al guardar los datos", Toast.LENGTH_SHORT).show();
-                    }
-                });
+                    });
+        } catch (Exception e) {
+            Toast.makeText(this, "Error al encriptar contraseña", Toast.LENGTH_SHORT).show();
+            Log.e("EncryptionError", e.getMessage());
+        }
+    }
+
+    private String encrypt(String data) throws Exception {
+        Key key = new SecretKeySpec(ENCRYPTION_KEY.getBytes(), AES_ALGORITHM);
+        Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
+        cipher.init(Cipher.ENCRYPT_MODE, key);
+        byte[] encryptedBytes = cipher.doFinal(data.getBytes());
+        return Base64.encodeToString(encryptedBytes, Base64.DEFAULT);
+    }
+
+    private String decrypt(String encryptedData) throws Exception {
+        Key key = new SecretKeySpec(ENCRYPTION_KEY.getBytes(), AES_ALGORITHM);
+        Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
+        cipher.init(Cipher.DECRYPT_MODE, key);
+        byte[] decodedBytes = Base64.decode(encryptedData, Base64.DEFAULT);
+        byte[] decryptedBytes = cipher.doFinal(decodedBytes);
+        return new String(decryptedBytes);
     }
 }
