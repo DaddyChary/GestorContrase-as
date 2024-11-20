@@ -1,5 +1,6 @@
 package com.example.biometric_chary;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Base64;
 import android.util.Log;
@@ -31,7 +32,7 @@ public class AddEditPasswordActivity extends AppCompatActivity {
     private static final String ENCRYPTION_KEY = "1234567890123456"; // Cambia esta clave por una más segura
 
     private EditText siteNameEditText, usernameEditText, passwordEditText, notesEditText;
-    private MaterialButton savePasswordButton;
+    private MaterialButton savePasswordButton, back_button;
     private DatabaseReference databaseReference;
 
     private FirebaseAuth mAuth;
@@ -47,6 +48,7 @@ public class AddEditPasswordActivity extends AppCompatActivity {
         passwordEditText = findViewById(R.id.password_input);
         notesEditText = findViewById(R.id.notes_input);
         savePasswordButton = findViewById(R.id.save_password_button);
+        back_button = findViewById(R.id.back_button);
 
         // Inicializar Firebase
         databaseReference = FirebaseDatabase.getInstance().getReference("Passwords");
@@ -59,6 +61,12 @@ public class AddEditPasswordActivity extends AppCompatActivity {
         }
 
         savePasswordButton.setOnClickListener(v -> savePassword());
+
+        back_button.setOnClickListener(v -> {
+            // Regresar a la actividad anterior
+            onBackPressed();  // También puedes usar finish() para cerrar la actividad
+        });
+
     }
 
     private void loadPasswordData(String documentId) {
