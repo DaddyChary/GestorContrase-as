@@ -35,5 +35,5 @@ Para ejecutar esta aplicación, necesitas tener configurado lo siguiente:
 1. **Clonar el repositorio**:
    Si aún no tienes el proyecto en tu máquina local, clónalo utilizando el siguiente comando:
    ```bash
-   git clone https://github.com/tu_usuario/biometric_chary.git
+    https://github.com/DaddyChary/GestorContrase-as.git
 
